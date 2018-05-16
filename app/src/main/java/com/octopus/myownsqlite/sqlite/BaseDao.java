@@ -210,6 +210,11 @@ public class BaseDao<T> implements IBaseDao<T> {
         return result;
     }
 
+    /**
+     * 获取值
+     * @param entity
+     * @return
+     */
     private ContentValues getContentValues(T entity) {
         ContentValues contentValues = new ContentValues();
         try{
