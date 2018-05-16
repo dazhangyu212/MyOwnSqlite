@@ -48,13 +48,21 @@ public class BaseDao<T> implements IBaseDao<T> {
             if (!autoCreateTable()){
                 return false;
             }
+            if (!initFieldMap()){
+                return false;
+            }
             isInit = true;
         }
-        initFieldMap();
+//        initFieldMap();
         return isInit;
     }
 
-    private void initFieldMap() {
+    private boolean initFieldMap() {
+        Field[] columnFields = entityClass.getDeclaredFields();
+        if (columnFields == null || columnFields.length > 0){
+            Log.e(TAG, "获取不到类中字段");
+            return false;
+        }
         //映射关系
 
         // 版本升级,最新版本在某个表中删除一个字段,由于数据库版本没有更新导致插入这个对象时,产生崩溃
@@ -64,7 +72,7 @@ public class BaseDao<T> implements IBaseDao<T> {
         String sql = "select * from "+this.tableName+" limit 1,0";
         Cursor cursor = sqLiteDatabase.rawQuery(sql,null);
         String[] columnNames = cursor.getColumnNames();
-        Field[] columnFields = entityClass.getDeclaredFields();
+//        Field[] columnFields = entityClass.getDeclaredFields();
         for (String columnName:columnNames){
             Field resultField = null;
             for (Field field:columnFields){
@@ -78,6 +86,7 @@ public class BaseDao<T> implements IBaseDao<T> {
             }
         }
         cursor.close();
+        return true;
     }
 
     private boolean getFieldMap(){
