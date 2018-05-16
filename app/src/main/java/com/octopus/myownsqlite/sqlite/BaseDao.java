@@ -80,7 +80,20 @@ public class BaseDao<T> implements IBaseDao<T> {
         cursor.close();
     }
 
-    private boolean getFieldMap()
+    private boolean getFieldMap(){
+        fieldMap = new HashMap<>();
+        Field[] fields = entityClass.getFields();
+        if (fields == null || fields.length > 0){
+            Log.e(TAG, "获取不到类中字段");
+            return false;
+        }
+        for (Field field:fields){
+            field.setAccessible(true);
+            DbField dbField = field.getAnnotation(DbField.class);
+            fieldMap.put(dbField == null?field.getName():dbField.value(),field);
+        }
+        return true;
+    }
 
     /**
      * 创建表
@@ -128,33 +141,61 @@ public class BaseDao<T> implements IBaseDao<T> {
 
     @Override
     public long insert(T t) {
+        long result = 0L;
         ContentValues contentValues = getValues(t);
-        long result = sqLiteDatabase.insert(tableName,null,contentValues);
+        result = sqLiteDatabase.insert(tableName,null,contentValues);
         return result;
     }
 
     @Override
-    public List<T> query(T entity) {
-        return query(entity,null,null,null);
+    public Integer delete(T where) {
+        int rows = 0;
+        ContentValues contentValues = getContentValues(where);
+        Condition condition = new Condition(contentValues);
+        rows = sqLiteDatabase.delete(tableName,condition.whereClause,condition.whereArgs);
+        return rows;
     }
 
-    public List<T> query(T entity,String orderBy,Integer startIndex,Integer limit ){
-        String limitString = null;
-        if (startIndex != null && limit != null){
-            limitString = startIndex+","+limit;
-        }
-        Condition condition = new Condition(getContentValues(entity));
-        Cursor cursor = null;
-        List<T> result = new ArrayList<>();
-        try {
+    @Override
+    public List<T> query(T entity) {
+        return query(entity,null);
+    }
 
-            cursor = sqLiteDatabase.query(tableName,null,condition.getWhereArgs(),condition.getWhereClause());
-            result = getResult(cursor,entity);
+    @Override
+    public Integer update(T entity, T where) {
+        int rows = 0;
+        ContentValues contentValues = getContentValues(entity);
+        ContentValues whereMap = getContentValues(where);
+        Condition condition = new Condition(whereMap);
+        rows = sqLiteDatabase.update(tableName,contentValues,condition.getWhereClause(),condition.getWhereArgs());
+        return rows;
+    }
+
+    @Override
+    public List<T> query(T where, String orderBy) {
+         return query(where, orderBy, null, null);
+    }
+
+    public List<T> query(T where,String orderBy,Integer page,Integer pageCount ){
+        List<T> result = null;
+        Cursor cursor = null;
+        String limitString = null;
+        if (page != null && pageCount != null){
+            int startIndex = --page;
+            limitString = (startIndex < 0 ? 0 : startIndex) + "," + pageCount;
+        }
+        try {
+            if (where!= null){
+                Condition condition = new Condition(getContentValues(where));
+                cursor = sqLiteDatabase.query(tableName,null,condition.getWhereClause(),condition.getWhereArgs(),null, null, orderBy, limitString);
+            }
+            result = getResult(cursor,where);
         }catch (Exception e){
             e.printStackTrace();
         }finally {
             if (cursor != null){
                 cursor.close();
+                cursor = null;
             }
         }
         return result;
@@ -180,7 +221,7 @@ public class BaseDao<T> implements IBaseDao<T> {
         private  String[] whereArgs;
 
         public Condition(ContentValues whereClause) {
-            ArrayList list = new ArrayList();
+            ArrayList<String> list = new ArrayList();
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append(" 1=1 ");
             Set keys = whereClause.keySet();
@@ -189,14 +230,13 @@ public class BaseDao<T> implements IBaseDao<T> {
                 String key = (String) iterator.next();
                 String value = (String) whereClause.get(key);
                 if (value != null){
-                    stringBuilder.append(" and "+key+" =?");
+                    stringBuilder.append(" and "+key+" =? ");
 
                     list.add(value);
                 }
             }
             this.whereClause = stringBuilder.toString();
-            this.whereArgs = list.toArray(new String[
-                    list.size()]);
+            this.whereArgs = list.toArray(new String[list.size()]);
         }
 
         public String getWhereClause() {
@@ -210,8 +250,23 @@ public class BaseDao<T> implements IBaseDao<T> {
 
     }
 
+    /**
+     * 将对象中的属性转成键值对
+     */
+    private Map<String, String> getClauseValues(T entity) throws IllegalAccessException {
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<String, Field> entry : fieldMap.entrySet()) {
+            Object value = entry.getValue().get(entity);
+            result.put(entry.getKey(), value == null ? "" : value.toString());
+        }
+        return result;
+    }
+
 
     private List<T> getResult(Cursor cursor, T entity) {
+        if (cursor == null){
+            return null;
+        }
         ArrayList list = new ArrayList();
         Object item;
         while (cursor.moveToNext()){
@@ -248,6 +303,11 @@ public class BaseDao<T> implements IBaseDao<T> {
         return list;
     }
 
+    /**
+     * 将对象属性生成ContentValues
+     * @param entity 实例
+     * @return
+     */
     private ContentValues getValues(T entity) {
         ContentValues contentValues = new ContentValues();
         Iterator<Map.Entry<String,Field>> iterator = fieldMap.entrySet().iterator();
