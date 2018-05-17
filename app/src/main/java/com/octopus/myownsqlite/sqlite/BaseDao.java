@@ -59,7 +59,7 @@ public class BaseDao<T> implements IBaseDao<T> {
 
     private boolean initFieldMap() {
         Field[] columnFields = entityClass.getDeclaredFields();
-        if (columnFields == null || columnFields.length > 0){
+        if (columnFields == null || columnFields.length <= 0){
             Log.e(TAG, "获取不到类中字段");
             return false;
         }
@@ -112,20 +112,20 @@ public class BaseDao<T> implements IBaseDao<T> {
         StringBuffer stringBuffer = new StringBuffer();
         stringBuffer.append("CREATE TABLE IF NOT EXISTS ");
         stringBuffer.append(tableName+" ( ");
-        Field[] fields = entityClass.getFields();
+        Field[] fields = entityClass.getDeclaredFields();
         if (fields != null && fields.length >0 ){
             for (Field field:fields){
                 Class type = field.getType();
                 if (type == String.class){
-                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" TEXT, ");
-                }else if (type == Double.class){
-                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" DOUBLE, ");
-                }else if (type == Integer.class){
-                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" INTEGER, ");
-                }else if (type == Long.class){
-                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" BIGINT, ");
+                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" TEXT,");
+                }else if (type == Double.class || type== double.class){
+                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" DOUBLE,");
+                }else if (type == Integer.class || type == int.class){
+                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" INTEGER,");
+                }else if (type == Long.class || type == long.class){
+                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" BIGINT,");
                 }else if (type == byte[].class){
-                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" BLOB, ");
+                    stringBuffer.append(field.getAnnotation(DbField.class).value()+" BLOB,");
                 }else {
                     Log.e(TAG, type.getClass().getName() + " don't support");
                     continue;
@@ -134,8 +134,8 @@ public class BaseDao<T> implements IBaseDao<T> {
             }
 
         }
-        if (stringBuffer.charAt(stringBuffer.length()-1) == ','){
-            stringBuffer.deleteCharAt(stringBuffer.length()-1);
+        if (stringBuffer.lastIndexOf(",") > 0){
+            stringBuffer.deleteCharAt(stringBuffer.lastIndexOf(","));
         }
         stringBuffer.append(" ) ");
         try {
@@ -195,11 +195,13 @@ public class BaseDao<T> implements IBaseDao<T> {
         }
         try {
             if (where!= null){
-                Condition condition = new Condition(getContentValues(where));
+                Condition condition = new Condition(getValues(where));
                 cursor = sqLiteDatabase.query(tableName,null,condition.getWhereClause(),condition.getWhereArgs(),null, null, orderBy, limitString);
+            }else {
+                cursor = sqLiteDatabase.query(tableName,null,null,null,null, null, orderBy, limitString);
             }
             result = getResult(cursor,where);
-        }catch (Exception e){
+        }catch (ClassCastException e){
             e.printStackTrace();
         }finally {
             if (cursor != null){
@@ -242,11 +244,10 @@ public class BaseDao<T> implements IBaseDao<T> {
             Iterator iterator = keys.iterator();
             while (iterator.hasNext()){
                 String key = (String) iterator.next();
-                String value = (String) whereClause.get(key);
+                Object value = whereClause.get(key);
                 if (value != null){
                     stringBuilder.append(" and "+key+" =? ");
-
-                    list.add(value);
+                    list.add(value.toString());
                 }
             }
             this.whereClause = stringBuilder.toString();
@@ -337,13 +338,13 @@ public class BaseDao<T> implements IBaseDao<T> {
                 if (type == String.class){
                     String value = (String) object;
                     contentValues.put(key,value);
-                }else if (type == Double.class){
+                }else if (type == Double.class || type == double.class){
                     Double value = (Double) object;
                     contentValues.put(key,value);
-                }else if (type == Integer.class){
+                }else if (type == Integer.class || type == int.class){
                     Integer value = (Integer) object;
                     contentValues.put(key,value);
-                }else if (type == Long.class){
+                }else if (type == Long.class || type == long.class){
                     Long value = (Long) object;
                     contentValues.put(key,value);
                 }else if (type == byte[].class){

@@ -9,13 +9,15 @@ import android.text.TextUtils;
 
 public class BaseDaoFactory {
 
-    private static final BaseDaoFactory ourInstance = new BaseDaoFactory();
     private static String sqliteDatabasePath;
     SQLiteDatabase sqLiteDatabase;
     public static BaseDaoFactory getInstance(){
-        return ourInstance;
+        return Instance.INSTANCE;
     }
 
+    private static class Instance {
+        public static BaseDaoFactory INSTANCE = new BaseDaoFactory();
+    }
     /**
      * 初始化数据库位置
      * @param dbPath
@@ -25,7 +27,7 @@ public class BaseDaoFactory {
     }
 
     private BaseDaoFactory() {
-        if (!TextUtils.isEmpty(sqliteDatabasePath)){
+        if (TextUtils.isEmpty(sqliteDatabasePath)){
             throw new RuntimeException("数据库路径不可为空");
         }
 //        sqliteDatabasePath = Environment.getExternalStorageDirectory().getAbsolutePath()+"/testsqlite/myown.db";

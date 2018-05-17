@@ -1,21 +1,26 @@
 package com.octopus.myownsqlite;
 
-import android.database.sqlite.SQLiteDatabase;
-import android.os.Environment;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 
-import com.octopus.myownsqlite.model.Person;
-import com.octopus.myownsqlite.sqlite.BaseDao;
-import com.octopus.myownsqlite.sqlite.BaseDaoFactory;
+import com.octopus.myownsqlite.activity.AndroidSqliteActivity;
+import com.octopus.myownsqlite.activity.CustomerDbFrameActivity;
+
 
 public class MainActivity extends AppCompatActivity {
-    BaseDao<Person> baseDao;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+    }
 
-        baseDao = BaseDaoFactory.getInstance().getBaseDao(Person.class);
+    public void android_sqlite(View view) {
+        AndroidSqliteActivity.launch(this);
+    }
+
+    public void customer_db_frame(View view) {
+        CustomerDbFrameActivity.launch(this);
     }
 }
